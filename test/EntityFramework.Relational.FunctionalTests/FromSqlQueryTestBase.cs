@@ -2,16 +2,17 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
-using Microsoft.Data.Entity.FunctionalTests;
 using Microsoft.Data.Entity.FunctionalTests.TestModels.Northwind;
+using Microsoft.Data.Entity.Relational.FunctionalTests.TestModels.NorthwindSproc;
 using Microsoft.Data.Entity.Tests;
 using Xunit;
 
 namespace Microsoft.Data.Entity.Relational.FunctionalTests
 {
     public abstract class FromSqlQueryTestBase<TFixture> : IClassFixture<TFixture>
-        where TFixture : NorthwindQueryFixtureBase, new()
+        where TFixture : NorthwindSprocQueryRelationalFixture, new()
     {
         [Fact]
         public virtual void From_sql_queryable_simple()
@@ -147,30 +148,74 @@ FROM Customers").Where(c => c.City == "London"),
                 entryCount: 52);
         }
 
-        //[Fact]
+        [Fact]
         public virtual void From_sql_queryable_stored_procedure()
         {
-            AssertQuery<Product>(
-                cs => cs.FromSql("EXEC ProductsOnOrder"),
-                cs => cs.Where(p => p.UnitsOnOrder > 0),
-                entryCount: 17);
+            AssertQuery(
+                cs => cs.FromSql(OpenDelimeter + SchemaName + CloseDelimeter + "." + OpenDelimeter + "Ten Most Expensive Products" + CloseDelimeter),
+                NorthwindSprocData.TenMostExpensiveProducts(),
+                entryCount: 10);
         }
 
-        //[Fact]
-        public virtual void From_sql_queryable_simple_composed_stored_procedure()
+        [Fact]
+        public virtual void From_sql_queryable_stored_procedure_with_parameter()
         {
-            AssertQuery<Product>(
-                cs => cs.FromSql(@"EXEC ProductsOnOrder").Where(p => p.UnitsInStock > 10),
-                cs => cs.Where(p => p.UnitsOnOrder > 0 && p.UnitsInStock > 10),
-                entryCount: 9);
+            AssertQuery(
+                cs => cs.FromSql(OpenDelimeter + SchemaName + CloseDelimeter + "." + OpenDelimeter + "CustOrderHist" + CloseDelimeter + " @CustomerID = {0}", "ALFKI"),
+                NorthwindSprocData.CustomerOrderHistory(),
+                entryCount: 11);
         }
 
-        //[Fact]
-        public virtual void From_sql_queryable_composed_stored_procedure()
+        [Fact]
+        public virtual void From_sql_queryable_stored_procedure_composed()
         {
-            AssertQuery<Product>(
-                cs => cs.FromSql(@"EXEC ProductsOnOrder").OrderBy(p => p.ProductID).Where(p => p.UnitsInStock > 10).Count(p => p.ProductName.Contains("e")),
-                cs => cs.OrderBy(p => p.ProductID).Where(p => p.UnitsOnOrder > 0 && p.UnitsInStock > 10).Count(p => p.ProductName.Contains("e")));
+            AssertQuery(
+                cs => cs.FromSql(OpenDelimeter + SchemaName + CloseDelimeter + "." + OpenDelimeter + "Ten Most Expensive Products" + CloseDelimeter)
+                    .Where(mep => mep.TenMostExpensiveProducts.Contains("C"))
+                    .OrderBy(mep => mep.UnitPrice),
+                NorthwindSprocData.TenMostExpensiveProducts()
+                    .Where(p => p.TenMostExpensiveProducts.Contains("C"))
+                    .OrderBy(mep => mep.UnitPrice),
+                assertOrder: true,
+                entryCount: 4);
+        }
+
+        [Fact]
+        public virtual void From_sql_queryable_stored_procedure_with_parameter_composed()
+        {
+            AssertQuery(
+                cs => cs.FromSql(OpenDelimeter + SchemaName + CloseDelimeter + "." + OpenDelimeter + "CustOrderHist" + CloseDelimeter + " @CustomerID = {0}", "ALFKI")
+                    .Where(coh => coh.ProductName.Contains("C"))
+                    .OrderBy(coh => coh.Total),
+                NorthwindSprocData.CustomerOrderHistory()
+                    .Where(coh => coh.ProductName.Contains("C"))
+                    .OrderBy(coh => coh.Total),
+                assertOrder: true,
+                entryCount: 2);
+        }
+
+        [Fact]
+        public virtual void From_sql_queryable_stored_procedure_take()
+        {
+            AssertQuery(
+                cs => cs.FromSql(OpenDelimeter + SchemaName + CloseDelimeter + "." + OpenDelimeter + "Ten Most Expensive Products" + CloseDelimeter)
+                    .Take(2),
+                NorthwindSprocData.TenMostExpensiveProducts()
+                    .Take(2),
+                assertOrder: true,
+                entryCount: 2);
+        }
+
+        [Fact]
+        public virtual void From_sql_queryable_stored_procedure_min()
+        {
+            AssertQuery<MostExpensiveProduct, decimal?>(
+                cs => cs.FromSql(OpenDelimeter + SchemaName + CloseDelimeter + "." + OpenDelimeter + "Ten Most Expensive Products" + CloseDelimeter)
+                    .Min(mep => mep.UnitPrice),
+                NorthwindSprocData.TenMostExpensiveProducts()
+                    .Min(mep => mep.UnitPrice),
+                assertOrder: true,
+                entryCount: 0);
         }
 
         [Fact]
@@ -183,7 +228,7 @@ FROM Customers").Where(c => c.City == "London"),
                     Assert.Throws<InvalidOperationException>(
                         () =>
                             context.Set<Product>()
-                                .FromSql("exec ProductsOnOrder")
+                                .FromSql("SelectStoredProcedure")
                                 .Include(p => p.OrderDetails)
                                 .ToArray()
                         ).Message);
@@ -239,6 +284,21 @@ FROM Customers").Where(c => c.City == "London"),
 
         protected TFixture Fixture { get; }
 
+        protected virtual string OpenDelimeter
+        {
+            get { return "\""; }
+        }
+
+        protected virtual string CloseDelimeter
+        {
+            get { return "\""; }
+        }
+
+        protected virtual string SchemaName
+        {
+            get { return "dbo"; }
+        }
+
         private void AssertQuery<TItem>(
             Func<DbSet<TItem>, IQueryable<object>> relationalQuery,
             Func<IQueryable<TItem>, IQueryable<object>> l2oQuery,
@@ -258,17 +318,38 @@ FROM Customers").Where(c => c.City == "London"),
         }
 
         private void AssertQuery<TItem>(
-            Func<DbSet<TItem>, int> relationalQuery,
-            Func<IQueryable<TItem>, int> l2oQuery,
-            bool assertOrder = false)
+            Func<DbSet<TItem>, IQueryable<object>> relationalQuery,
+            IEnumerable<TItem> expected,
+            bool assertOrder = false,
+            int entryCount = 0)
             where TItem : class
         {
             using (var context = CreateContext())
             {
                 TestHelpers.AssertResults(
-                    new[] { l2oQuery(NorthwindData.Set<TItem>()) },
+                    expected.ToArray(),
+                    relationalQuery(context.Set<TItem>()).ToArray(),
+                    assertOrder);
+
+                Assert.Equal(entryCount, context.ChangeTracker.Entries().Count());
+            }
+        }
+
+        private void AssertQuery<TItem, TResult>(
+            Func<DbSet<TItem>, TResult> relationalQuery,
+            TResult expected,
+            bool assertOrder = false,
+            int entryCount = 0)
+            where TItem : class
+        {
+            using (var context = CreateContext())
+            {
+                TestHelpers.AssertResults(
+                    new[] { expected },
                     new[] { relationalQuery(context.Set<TItem>()) },
                     assertOrder);
+
+                Assert.Equal(entryCount, context.ChangeTracker.Entries().Count());
             }
         }
     }

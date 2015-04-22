@@ -200,7 +200,10 @@ namespace Microsoft.Data.Entity.Tests
             {
                 if (assertOrder)
                 {
-                    Assert.Equal(expected, actual);
+                    for (var index = 0; index < expected.Count; index++)
+                    {
+                        Assert.Equal(expected[index], actual[index]);
+                    }
                 }
                 else
                 {

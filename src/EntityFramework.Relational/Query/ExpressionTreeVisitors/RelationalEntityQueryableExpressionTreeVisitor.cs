@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Data.Common;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Text.RegularExpressions;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Query;
 using Microsoft.Data.Entity.Query.Annotations;
@@ -20,6 +21,8 @@ namespace Microsoft.Data.Entity.Relational.Query.ExpressionTreeVisitors
 {
     public class RelationalEntityQueryableExpressionTreeVisitor : EntityQueryableExpressionTreeVisitor
     {
+        private static readonly Regex selectRegex = new Regex(@"^\s*select\s+", RegexOptions.IgnoreCase);
+
         private static readonly ParameterExpression _readerParameter
             = Expression.Parameter(typeof(DbDataReader));
 
@@ -106,14 +109,13 @@ namespace Microsoft.Data.Entity.Relational.Query.ExpressionTreeVisitors
             var composed = true;
             if (fromSqlAnnotation != null)
             {
-                if (!fromSqlAnnotation.Sql.TrimStart().StartsWith("SELECT", StringComparison.OrdinalIgnoreCase))
+                if(!selectRegex.IsMatch(fromSqlAnnotation.Sql))
                 {
                     if (QueryModelVisitor.QueryCompilationContext.QueryAnnotations.OfType<IncludeQueryAnnotation>().Any())
                     {
                         throw new InvalidOperationException(Strings.StoredProcedureIncludeNotSupported);
                     }
-                    // Note: All client eval flags should be set here
-                    QueryModelVisitor.RequiresClientFilter = true;
+                    QueryModelVisitor.RequiresClientEval = true;
                     composed = false;
                 }
 
@@ -139,7 +141,7 @@ namespace Microsoft.Data.Entity.Relational.Query.ExpressionTreeVisitors
                         _readerParameter
                     };
 
-            if (QueryModelVisitor.QuerySourceRequiresMaterialization(_querySource))
+            if (QueryModelVisitor.QuerySourceRequiresMaterialization(_querySource) || QueryModelVisitor.RequiresClientEval)
             {
                 var materializer
                     = new MaterializerFactory(

@@ -6,7 +6,7 @@ using Xunit;
 
 namespace Microsoft.Data.Entity.SqlServer.FunctionalTests
 {
-    public class FromSqlQuerySqlServerTest : FromSqlQueryTestBase<NorthwindQuerySqlServerFixture>
+    public class FromSqlQuerySqlServerTest : FromSqlQueryTestBase<NorthwindSprocQuerySqlServerFixture>
     {
         public override void From_sql_queryable_simple()
         {
@@ -178,25 +178,57 @@ ORDER BY [c].[CustomerID]",
             base.From_sql_queryable_stored_procedure();
 
             Assert.Equal(
-                @"EXEC ProductsOnOrder",
+                @"[dbo].[Ten Most Expensive Products]",
                 Sql);
         }
 
-        public override void From_sql_queryable_simple_composed_stored_procedure()
+        public override void From_sql_queryable_stored_procedure_with_parameter()
         {
-            base.From_sql_queryable_simple_composed_stored_procedure();
+            base.From_sql_queryable_stored_procedure_with_parameter();
 
             Assert.Equal(
-                @"EXEC ProductsOnOrder",
+                @"p0: ALFKI
+
+[dbo].[CustOrderHist] @CustomerID = @p0",
                 Sql);
         }
 
-        public override void From_sql_queryable_composed_stored_procedure()
+
+        public override void From_sql_queryable_stored_procedure_composed()
         {
-            base.From_sql_queryable_composed_stored_procedure();
+            base.From_sql_queryable_stored_procedure_composed();
 
             Assert.Equal(
-                @"EXEC ProductsOnOrder",
+                @"[dbo].[Ten Most Expensive Products]",
+                Sql);
+        }
+
+        public override void From_sql_queryable_stored_procedure_with_parameter_composed()
+        {
+            base.From_sql_queryable_stored_procedure_with_parameter_composed();
+
+            Assert.Equal(
+                @"p0: ALFKI
+
+[dbo].[CustOrderHist] @CustomerID = @p0",
+                Sql);
+        }
+
+        public override void From_sql_queryable_stored_procedure_take()
+        {
+            base.From_sql_queryable_stored_procedure_take();
+
+            Assert.Equal(
+                @"[dbo].[Ten Most Expensive Products]",
+                Sql);
+        }
+
+        public override void From_sql_queryable_stored_procedure_min()
+        {
+            base.From_sql_queryable_stored_procedure_min();
+
+            Assert.Equal(
+                @"[dbo].[Ten Most Expensive Products]",
                 Sql);
         }
 
@@ -238,9 +270,19 @@ WHERE [c].[ContactName] = [c].[CompanyName]",
                 Sql);
         }
 
-        public FromSqlQuerySqlServerTest(NorthwindQuerySqlServerFixture fixture)
+        public FromSqlQuerySqlServerTest(NorthwindSprocQuerySqlServerFixture fixture)
             : base(fixture)
         {
+        }
+
+        protected override string OpenDelimeter
+        {
+            get { return "["; }
+        }
+
+        protected override string CloseDelimeter
+        {
+            get { return "]"; }
         }
 
         private static string Sql => TestSqlLoggerFactory.Sql;
