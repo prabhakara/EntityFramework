@@ -282,9 +282,9 @@ namespace Microsoft.Data.Entity.Relational.Query
         public override void VisitOrderByClause(OrderByClause orderByClause, QueryModel queryModel, int index)
         {
             var selectExpression = TryGetQuery(queryModel.MainFromClause);
-            var clientOrderBy = selectExpression == null;
+            var requiresClientOrderBy = selectExpression == null;
 
-            if (!clientOrderBy)
+            if (!requiresClientOrderBy)
             {
                 var sqlTranslatingExpressionTreeVisitor
                     = new SqlTranslatingExpressionTreeVisitor(this);
@@ -314,11 +314,11 @@ namespace Microsoft.Data.Entity.Relational.Query
                 }
                 else
                 {
-                    clientOrderBy = true;
+                    requiresClientOrderBy = true;
                 }
             }
 
-            if (RequiresClientEval | clientOrderBy)
+            if (RequiresClientEval | requiresClientOrderBy)
             {
                 base.VisitOrderByClause(orderByClause, queryModel, index);
             }

@@ -5,21 +5,11 @@ using Microsoft.Data.Entity.Relational.FunctionalTests;
 
 namespace Microsoft.Data.Entity.SqlServer.FunctionalTests
 {
-    public class AsyncFromSqlQuerySqlServerTest : AsyncFromSqlQueryTestBase<NorthwindSprocQuerySqlServerFixture>
+    public class AsyncFromSqlQuerySqlServerTest : AsyncFromSqlQueryTestBase<NorthwindQuerySqlServerFixture>
     {
-        public AsyncFromSqlQuerySqlServerTest(NorthwindSprocQuerySqlServerFixture fixture)
+        public AsyncFromSqlQuerySqlServerTest(NorthwindQuerySqlServerFixture fixture)
             : base(fixture)
         {
-        }
-
-        protected override string OpenDelimeter
-        {
-            get { return "["; }
-        }
-
-        protected override string CloseDelimeter
-        {
-            get { return "]"; }
         }
     }
 }
