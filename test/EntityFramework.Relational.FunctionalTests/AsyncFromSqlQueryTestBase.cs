@@ -18,49 +18,117 @@ namespace Microsoft.Data.Entity.Relational.FunctionalTests
         [Fact]
         public virtual async Task From_sql_queryable_simple()
         {
-            await AssertQuery<Customer>(
-                cs => cs.FromSql("SELECT * FROM Customers"),
-                cs => cs,
-                entryCount: 91);
+            using (var context = CreateContext())
+            {
+                var actual = await context.Set<Customer>()
+                    .FromSql("SELECT * FROM Customers")
+                    .ToArrayAsync();
+
+                Assert.Equal(91, actual.Length);
+                Assert.Equal(91, context.ChangeTracker.Entries().Count());
+            }
         }
 
         [Fact]
         public virtual async Task From_sql_queryable_filter()
         {
-            await AssertQuery<Customer>(
-                cs => cs.FromSql("SELECT * FROM Customers WHERE Customers.ContactName LIKE '%z%'"),
-                cs => cs.Where(c => c.ContactName.Contains("z")),
-                entryCount: 14);
+            using (var context = CreateContext())
+            {
+                var actual = await context.Set<Customer>()
+                    .FromSql("SELECT * FROM Customers WHERE Customers.ContactName LIKE '%z%'")
+                    .ToArrayAsync();
+
+                Assert.Equal(14, actual.Length);
+                Assert.Equal(14, context.ChangeTracker.Entries().Count());
+            }
         }
 
         [Fact]
         public virtual async Task From_sql_queryable_composed()
         {
-            await AssertQuery<Customer>(
-                cs => cs.FromSql("SELECT * FROM Customers").Where(c => c.ContactName.Contains("z")),
-                cs => cs.Where(c => c.ContactName.Contains("z")),
-                entryCount: 14);
+            using (var context = CreateContext())
+            {
+                var actual = await context.Set<Customer>()
+                    .FromSql("SELECT * FROM Customers")
+                    .Where(c => c.ContactName.Contains("z"))
+                    .ToArrayAsync();
+
+                Assert.Equal(14, actual.Length);
+            }
         }
 
         [Fact]
         public virtual async Task From_sql_queryable_multiple_line_query()
         {
-            await AssertQuery<Customer>(
-                cs => cs.FromSql(@"SELECT *
+            using (var context = CreateContext())
+            {
+                var actual = await context.Set<Customer>()
+                    .FromSql(@"SELECT *
 FROM Customers
-WHERE Customers.City = 'London'"),
-                cs => cs.Where(c => c.City == "London"),
-                entryCount: 6);
+WHERE Customers.City = 'London'")
+                    .ToArrayAsync();
+
+                Assert.Equal(6, actual.Length);
+                Assert.True(actual.All(c => c.City == "London"));
+            }
         }
 
         [Fact]
         public virtual async Task From_sql_queryable_composed_multiple_line_query()
         {
-            await AssertQuery<Customer>(
-                cs => cs.FromSql(@"SELECT *
-FROM Customers").Where(c => c.City == "London"),
-                cs => cs.Where(c => c.City == "London"),
-                entryCount: 6);
+            using (var context = CreateContext())
+            {
+                var actual = await context.Set<Customer>()
+                    .FromSql(@"SELECT *
+FROM Customers")
+                    .Where(c => c.City == "London")
+                    .ToArrayAsync();
+
+                Assert.Equal(6, actual.Length);
+                Assert.True(actual.All(c => c.City == "London"));
+            }
+        }
+
+        [Fact]
+        public virtual async Task From_sql_queryable_with_columns_reordered()
+        {
+            using (var context = CreateContext())
+            {
+                var ascending = (await context.Set<Customer>()
+                    .FromSql(@"SELECT
+    Address, City, CompanyName, ContactName, ContactTitle, Country, CustomerID, Fax, Phone, PostalCode, Region
+FROM
+    Customers
+WHERE
+    CustomerID = 'ALFKI'")
+                    .ToArrayAsync())
+                    .Single();
+
+                var descending = (await context.Set<Customer>()
+                    .FromSql(@"SELECT
+    Region, PostalCode, Phone, Fax, CustomerID, Country, ContactTitle, ContactName, CompanyName, City, Address
+FROM
+    Customers
+WHERE
+    CustomerID = 'ALFKI'")
+                    .ToArrayAsync())
+                    .Single();
+
+                foreach (var actual in new[] { ascending, descending })
+                {
+                    Assert.Equal("ALFKI", actual.CustomerID);
+                    Assert.Equal("Alfreds Futterkiste", actual.CompanyName);
+                    Assert.Equal("Maria Anders", actual.ContactName);
+                    Assert.Equal("Sales Representative", actual.ContactTitle);
+                    Assert.Equal("Obere Str. 57", actual.Address);
+                    Assert.Equal("Berlin", actual.City);
+                    Assert.Null(actual.Region);
+                    Assert.Equal("12209", actual.PostalCode);
+                    Assert.Equal("Germany", actual.Country);
+                    Assert.Equal("030-0074321", actual.Phone);
+                    Assert.Equal("030-0076545", actual.Fax);
+                }
+            }
         }
 
         [Fact]
@@ -69,10 +137,16 @@ FROM Customers").Where(c => c.City == "London"),
             var city = "London";
             var contactTitle = "Sales Representative";
 
-            await AssertQuery<Customer>(
-                cs => cs.FromSql(@"SELECT * FROM Customers WHERE City = {0} AND ContactTitle = {1}", city, contactTitle),
-                cs => cs.Where(c => c.City == city && c.ContactTitle == contactTitle),
-                entryCount: 3);
+            using (var context = CreateContext())
+            {
+                var actual = await context.Set<Customer>()
+                    .FromSql(@"SELECT * FROM Customers WHERE City = {0} AND ContactTitle = {1}", city, contactTitle)
+                    .ToArrayAsync();
+
+                Assert.Equal(3, actual.Length);
+                Assert.True(actual.All(c => c.City == "London"));
+                Assert.True(actual.All(c => c.ContactTitle == "Sales Representative"));
+            }
         }
 
         [Fact]
@@ -81,24 +155,38 @@ FROM Customers").Where(c => c.City == "London"),
             var city = "London";
             var contactTitle = "Sales Representative";
 
-            await AssertQuery<Customer>(
-                cs => cs.FromSql(@"SELECT * FROM Customers WHERE City = {0}", city).Where(c => c.ContactTitle == contactTitle),
-                cs => cs.Where(c => c.City == city && c.ContactTitle == contactTitle),
-                entryCount: 3);
+            using (var context = CreateContext())
+            {
+                var actual = await context.Set<Customer>()
+                    .FromSql(@"SELECT * FROM Customers WHERE City = {0}", city)
+                    .Where(c => c.ContactTitle == contactTitle)
+                    .ToArrayAsync();
+
+                Assert.Equal(3, actual.Length);
+                Assert.True(actual.All(c => c.City == "London"));
+                Assert.True(actual.All(c => c.ContactTitle == "Sales Representative"));
+            }
         }
 
         [Fact]
         public virtual async Task From_sql_queryable_simple_cache_key_includes_query_string()
         {
-            await AssertQuery<Customer>(
-                cs => cs.FromSql("SELECT * FROM Customers WHERE Customers.City = 'London'"),
-                cs => cs.Where(c => c.City == "London"),
-                entryCount: 6);
+            using (var context = CreateContext())
+            {
+                var actual = await context.Set<Customer>()
+                    .FromSql("SELECT * FROM Customers WHERE Customers.City = 'London'")
+                    .ToArrayAsync();
 
-            await AssertQuery<Customer>(
-                cs => cs.FromSql("SELECT * FROM Customers WHERE Customers.City = 'Seattle'"),
-                cs => cs.Where(c => c.City == "Seattle"),
-                entryCount: 1);
+                Assert.Equal(6, actual.Length);
+                Assert.True(actual.All(c => c.City == "London"));
+
+                actual = await context.Set<Customer>()
+                    .FromSql("SELECT * FROM Customers WHERE Customers.City = 'Seattle'")
+                    .ToArrayAsync();
+
+                Assert.Equal(1, actual.Length);
+                Assert.True(actual.All(c => c.City == "Seattle"));
+            }
         }
 
         [Fact]
@@ -108,45 +196,71 @@ FROM Customers").Where(c => c.City == "London"),
             var contactTitle = "Sales Representative";
             var sql = @"SELECT * FROM Customers WHERE City = {0} AND ContactTitle = {1}";
 
-            await AssertQuery<Customer>(
-                cs => cs.FromSql(sql, city, contactTitle),
-                cs => cs.Where(c => c.City == city && c.ContactTitle == contactTitle),
-                entryCount: 3);
+            using (var context = CreateContext())
+            {
+                var actual = await context.Set<Customer>()
+                    .FromSql(sql, city, contactTitle)
+                    .ToArrayAsync();
 
-            city = "Madrid";
-            contactTitle = "Accounting Manager";
+                Assert.Equal(3, actual.Length);
+                Assert.True(actual.All(c => c.City == "London"));
+                Assert.True(actual.All(c => c.ContactTitle == "Sales Representative"));
 
-            await AssertQuery<Customer>(
-                cs => cs.FromSql(sql, city, contactTitle),
-                cs => cs.Where(c => c.City == city && c.ContactTitle == contactTitle),
-                entryCount: 2);
+                city = "Madrid";
+                contactTitle = "Accounting Manager";
+
+                actual = await context.Set<Customer>()
+                    .FromSql(sql, city, contactTitle)
+                    .ToArrayAsync();
+
+                Assert.Equal(2, actual.Length);
+                Assert.True(actual.All(c => c.City == "Madrid"));
+                Assert.True(actual.All(c => c.ContactTitle == "Accounting Manager"));
+            }
         }
 
         [Fact]
         public virtual async Task From_sql_queryable_simple_as_no_tracking_not_composed()
         {
-            await AssertQuery<Customer>(
-                cs => cs.FromSql("SELECT * FROM Customers").AsNoTracking(),
-                cs => cs,
-                entryCount: 0);
+            using (var context = CreateContext())
+            {
+                var actual = await context.Set<Customer>()
+                    .FromSql("SELECT * FROM Customers")
+                    .AsNoTracking()
+                    .ToArrayAsync();
+
+                Assert.Equal(91, actual.Length);
+                Assert.Equal(0, context.ChangeTracker.Entries().Count());
+            }
         }
 
         [Fact]
         public virtual async Task From_sql_queryable_simple_include()
         {
-            await AssertQuery<Customer>(
-                cs => cs.FromSql("SELECT * FROM Customers").Include(c => c.Orders),
-                cs => cs,
-                entryCount: 921);
+            using (var context = CreateContext())
+            {
+                var actual = await context.Set<Customer>()
+                    .FromSql("SELECT * FROM Customers")
+                    .Include(c => c.Orders)
+                    .ToArrayAsync();
+
+                Assert.Equal(830, actual.SelectMany(c => c.Orders).Count());
+            }
         }
 
         [Fact]
         public virtual async Task From_sql_queryable_simple_composed_include()
         {
-            await AssertQuery<Customer>(
-                cs => cs.FromSql("SELECT * FROM Customers").Where(c => c.City == "London").Include(c => c.Orders),
-                cs => cs.Where(c => c.City == "London"),
-                entryCount: 52);
+            using (var context = CreateContext())
+            {
+                var actual = await context.Set<Customer>()
+                    .FromSql("SELECT * FROM Customers")
+                    .Where(c => c.City == "London")
+                    .Include(c => c.Orders)
+                    .ToArrayAsync();
+
+                Assert.Equal(46, actual.SelectMany(c => c.Orders).Count());
+            }
         }
 
         [Fact]
@@ -154,19 +268,45 @@ FROM Customers").Where(c => c.City == "London"),
         {
             using (var context = CreateContext())
             {
-                TestHelpers.AssertResults(
-                    NorthwindData.Set<Customer>().Where(c => c.ContactName.Contains("z")).ToArray(),
-                    await context.Customers.FromSql("SELECT * FROM Customers WHERE Customers.ContactName LIKE '%z%'").ToArrayAsync(),
-                    assertOrder: false);
+                var actual = await context.Customers
+                    .FromSql("SELECT * FROM Customers WHERE Customers.ContactName LIKE '%z%'")
+                    .ToArrayAsync();
 
-                Assert.Equal(14, context.ChangeTracker.Entries().Count());
+                Assert.Equal(14, actual.Length);
 
-                TestHelpers.AssertResults(
-                    NorthwindData.Set<Customer>().ToArray(),
-                    await context.Customers.ToArrayAsync(),
-                    assertOrder: false);
+                actual = await context.Customers
+                    .ToArrayAsync();
 
-                Assert.Equal(91, context.ChangeTracker.Entries().Count());
+                Assert.Equal(91, actual.Length);
+            }
+        }
+
+        [Fact]
+        public virtual async Task From_sql_composed_with_nullable_predicate()
+        {
+            using (var context = CreateContext())
+            {
+                var actual = await context.Set<Customer>()
+                    .FromSql("SELECT * FROM Customers")
+                    .Where(c => c.ContactName == c.CompanyName)
+                    .ToArrayAsync();
+
+                Assert.Equal(0, actual.Length);
+            }
+        }
+
+        [Fact]
+        public virtual async Task From_sql_composed_with_relational_null_comparison()
+        {
+            using (var context = CreateContext())
+            {
+                var actual = await context.Set<Customer>()
+                    .UseRelationalNullSemantics()
+                    .FromSql("SELECT * FROM Customers")
+                    .Where(c => c.ContactName == c.CompanyName)
+                    .ToArrayAsync();
+
+                Assert.Equal(0, actual.Length);
             }
         }
 
@@ -181,24 +321,5 @@ FROM Customers").Where(c => c.City == "London"),
         }
 
         protected TFixture Fixture { get; }
-
-        private async Task AssertQuery<TItem>(
-            Func<DbSet<TItem>, IQueryable<object>> relationalQuery,
-            Func<IQueryable<TItem>, IQueryable<object>> l2oQuery,
-            bool assertOrder = false,
-            int entryCount = 0,
-            Action<IList<object>, IList<object>> asserter = null)
-            where TItem : class
-        {
-            using (var context = CreateContext())
-            {
-                TestHelpers.AssertResults(
-                    l2oQuery(NorthwindData.Set<TItem>()).ToArray(),
-                    await relationalQuery(context.Set<TItem>()).ToArrayAsync(),
-                    assertOrder,
-                    asserter);
-                Assert.Equal(entryCount, context.ChangeTracker.Entries().Count());
-            }
-        }
     }
 }

@@ -8,36 +8,5 @@ namespace Microsoft.Data.Entity.Relational.FunctionalTests.TestModels.NorthwindS
         public string ProductName { get; set; }
 
         public int Total { get; set; }
-
-        protected bool Equals(CustomerOrderHistory other)
-        {
-            return string.Equals(ProductName, other.ProductName)
-                && Total == other.Total;
-        }
-
-        public override bool Equals(object obj)
-        {
-            if (ReferenceEquals(null, obj))
-            {
-                return false;
-            }
-            if (ReferenceEquals(this, obj))
-            {
-                return true;
-            }
-
-            return obj.GetType() == GetType()
-                   && Equals((CustomerOrderHistory)obj);
-        }
-
-        public override int GetHashCode()
-        {
-            return ProductName.GetHashCode();
-        }
-
-        public override string ToString()
-        {
-            return "CustomerOrderHistory " + ProductName;
-        }
     }
 }

@@ -64,6 +64,26 @@ WHERE [c].[City] = 'London'",
                 Sql);
         }
 
+        public override void From_sql_queryable_with_columns_reordered()
+        {
+            base.From_sql_queryable_with_columns_reordered();
+
+            Assert.Equal(@"SELECT
+    Address, City, CompanyName, ContactName, ContactTitle, Country, CustomerID, Fax, Phone, PostalCode, Region
+FROM
+    Customers
+WHERE
+    CustomerID = 'ALFKI'
+
+SELECT
+    Region, PostalCode, Phone, Fax, CustomerID, Country, ContactTitle, ContactName, CompanyName, City, Address
+FROM
+    Customers
+WHERE
+    CustomerID = 'ALFKI'",
+                Sql);
+}
+
         public override void From_sql_queryable_with_parameters()
         {
             base.From_sql_queryable_with_parameters();

@@ -109,7 +109,7 @@ namespace Microsoft.Data.Entity.Relational.Query.ExpressionTreeVisitors
             var composed = true;
             if (fromSqlAnnotation != null)
             {
-                if(!_selectRegex.IsMatch(fromSqlAnnotation.Sql))
+                if (!_selectRegex.IsMatch(fromSqlAnnotation.Sql))
                 {
                     if (QueryModelVisitor.QueryCompilationContext.QueryAnnotations.OfType<IncludeQueryAnnotation>().Any())
                     {

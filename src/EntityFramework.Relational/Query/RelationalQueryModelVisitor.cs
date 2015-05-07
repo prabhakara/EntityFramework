@@ -31,7 +31,6 @@ namespace Microsoft.Data.Entity.Relational.Query
             = new Dictionary<IQuerySource, SelectExpression>();
 
         private bool _requiresClientFilter;
-
         private bool _requiresClientResultOperator;
 
         private RelationalProjectionExpressionTreeVisitor _projectionTreeVisitor;
@@ -45,21 +44,12 @@ namespace Microsoft.Data.Entity.Relational.Query
         }
 
         public virtual bool RequiresClientEval { get; set; }
-
         public virtual bool RequiresClientFilter => _requiresClientFilter || RequiresClientEval;
-
         public virtual bool RequiresClientProjection => _projectionTreeVisitor.RequiresClientEval || RequiresClientEval;
-
         public virtual bool RequiresClientResultOperator
         {
-            get
-            {
-                return _requiresClientResultOperator || RequiresClientEval;
-            }
-            set
-            {
-                _requiresClientResultOperator = value;
-            }
+            get { return _requiresClientResultOperator || RequiresClientEval; }
+            set { _requiresClientResultOperator = value; }
         }
 
         public new virtual RelationalQueryCompilationContext QueryCompilationContext

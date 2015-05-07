@@ -76,8 +76,6 @@ namespace Microsoft.Data.Entity.SqlServer.FunctionalTests
 
         protected override string CustomerOrderHistorySproc => "[dbo].[CustOrderHist] @CustomerID = {0}";
 
-        protected override object[] CustomerOrderHistoryParameters => new[] { "ALFKI" };
-
         private static string Sql => TestSqlLoggerFactory.Sql;
     }
 }

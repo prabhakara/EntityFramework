@@ -24,13 +24,11 @@ namespace Microsoft.Data.Entity.Relational.FunctionalTests
                     .ToArray();
 
                 Assert.Equal(10, actual.Length);
-                Assert.True(
-                    actual.Contains(
-                        new MostExpensiveProduct
-                        {
-                            TenMostExpensiveProducts = "Côte de Blaye",
-                            UnitPrice = 263.50m
-                        }));
+
+                Assert.True(actual.Any(
+                    mep =>
+                        mep.TenMostExpensiveProducts == "Côte de Blaye"
+                        && mep.UnitPrice == 263.50m));
             }
         }
 
@@ -41,17 +39,16 @@ namespace Microsoft.Data.Entity.Relational.FunctionalTests
             {
                 var actual = context
                     .Set<CustomerOrderHistory>()
-                    .FromSql(CustomerOrderHistorySproc, CustomerOrderHistoryParameters)
+                    .FromSql(CustomerOrderHistorySproc, "ALFKI")
                     .ToArray();
 
                 Assert.Equal(11, actual.Length);
+
                 Assert.True(
-                    actual.Contains(
-                        new CustomerOrderHistory
-                        {
-                            ProductName = "Aniseed Syrup",
-                            Total = 6
-                        }));
+                    actual.Any(
+                        coh =>
+                            coh.ProductName == "Aniseed Syrup"
+                            && coh.Total == 6));
             }
         }
 
@@ -67,31 +64,9 @@ namespace Microsoft.Data.Entity.Relational.FunctionalTests
                     .OrderBy(mep => mep.UnitPrice)
                     .ToArray();
 
-                Assert.Equal(
-                    new MostExpensiveProduct[]
-                    {
-                        new MostExpensiveProduct
-                        {
-                            TenMostExpensiveProducts = "Ipoh Coffee",
-                            UnitPrice = 46.00m
-                        },
-                        new MostExpensiveProduct
-                        {
-                            TenMostExpensiveProducts = "Raclette Courdavault",
-                            UnitPrice = 55.00m
-                        },
-                        new MostExpensiveProduct
-                        {
-                            TenMostExpensiveProducts = "Carnarvon Tigers",
-                            UnitPrice = 62.50m
-                        },
-                        new MostExpensiveProduct
-                        {
-                            TenMostExpensiveProducts = "Côte de Blaye",
-                            UnitPrice = 263.50m
-                        }
-                    },
-                    actual);
+                Assert.Equal(4, actual.Length);
+                Assert.Equal(46.00m, actual.First().UnitPrice);
+                Assert.Equal(263.50m, actual.Last().UnitPrice);
             }
         }
 
@@ -102,27 +77,14 @@ namespace Microsoft.Data.Entity.Relational.FunctionalTests
             {
                 var actual = context
                     .Set<CustomerOrderHistory>()
-                    .FromSql(CustomerOrderHistorySproc, CustomerOrderHistoryParameters)
+                    .FromSql(CustomerOrderHistorySproc, "ALFKI")
                     .Where(coh => coh.ProductName.Contains("C"))
                     .OrderBy(coh => coh.Total)
                     .ToArray();
 
-
-                Assert.Equal(
-                    new CustomerOrderHistory[]
-                    {
-                        new CustomerOrderHistory
-                        {
-                            ProductName = "Raclette Courdavault",
-                            Total = 15
-                        },
-                        new CustomerOrderHistory
-                        {
-                            ProductName = "Chartreuse verte",
-                            Total = 21
-                        }
-                    },
-                    actual);
+                Assert.Equal(2, actual.Length);
+                Assert.Equal(15, actual.First().Total);
+                Assert.Equal(21, actual.Last().Total);
             }
         }
 
@@ -138,21 +100,9 @@ namespace Microsoft.Data.Entity.Relational.FunctionalTests
                     .Take(2)
                     .ToArray();
 
-                Assert.Equal(
-                    new MostExpensiveProduct[]
-                    {
-                        new MostExpensiveProduct
-                        {
-                            TenMostExpensiveProducts = "Côte de Blaye",
-                            UnitPrice = 263.50m
-                        },
-                        new MostExpensiveProduct
-                        {
-                            TenMostExpensiveProducts = "Thüringer Rostbratwurst",
-                            UnitPrice = 123.79m
-                        }
-                    },
-                    actual);
+                Assert.Equal(2, actual.Length);
+                Assert.Equal(263.50m, actual.First().UnitPrice);
+                Assert.Equal(123.79m, actual.Last().UnitPrice);
             }
         }
 
@@ -163,10 +113,9 @@ namespace Microsoft.Data.Entity.Relational.FunctionalTests
             {
                 Assert.Equal(
                     45.60m,
-                    context
-                    .Set<MostExpensiveProduct>()
-                    .FromSql(TenMostExpensiveProductsSproc)
-                    .Min(mep => mep.UnitPrice));
+                    context.Set<MostExpensiveProduct>()
+                        .FromSql(TenMostExpensiveProductsSproc)
+                        .Min(mep => mep.UnitPrice));
             }
         }
 
@@ -202,7 +151,5 @@ namespace Microsoft.Data.Entity.Relational.FunctionalTests
         protected abstract string TenMostExpensiveProductsSproc { get; }
 
         protected abstract string CustomerOrderHistorySproc { get; }
-
-        protected abstract object[] CustomerOrderHistoryParameters { get; }
     }
 }
