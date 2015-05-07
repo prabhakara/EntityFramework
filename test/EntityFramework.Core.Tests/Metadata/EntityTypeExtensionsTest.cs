@@ -4,6 +4,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Data.Entity.Metadata;
+using Microsoft.Data.Entity.Utilities;
 using Moq;
 using Xunit;
 
@@ -38,6 +39,23 @@ namespace Microsoft.Data.Entity.Tests.Metadata
             entityType.GetReferencingForeignKeys();
 
             modelMock.Verify(m => m.GetReferencingForeignKeys(entityType), Times.Once());
+        }
+
+        [Fact]
+        public void Can_get_proper_table_name_for_generic_entityType()
+        {
+            var modelMock = new Mock<Model>();
+            var entityType = new EntityType(typeof(A<int>), modelMock.Object);
+
+            Assert.Equal(
+                TypeNameHelper.GetTypeDisplayName(typeof(A<int>), false),
+                ((IEntityType)entityType).DisplayName());
+
+        }
+
+        public class A<T>
+        {
+
         }
     }
 }
